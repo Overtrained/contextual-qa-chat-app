@@ -8,13 +8,15 @@ from langchain.chains.query_constructor.base import AttributeInfo
 import pinecone
 
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+from langchain.chains.question_answering import load_qa_chain
+from langchain.memory import ConversationSummaryBufferMemory
 
 
 @st.cache_resource
 def init_vectorstore(openai_key):
     os.environ["OPENAI_API_KEY"] = openai_key
     os.environ["PINECONE_API_KEY"] = st.secrets["PINECONE_API_KEY"]
+
     # connect to pinecone vectorstore
     pinecone.init(environment=st.secrets["PINECONE_ENV"])
     embeddings = OpenAIEmbeddings()
@@ -65,6 +67,17 @@ if "messages" not in st.session_state.keys():
         {"role": "assistant", "content": "How may I assist you today?"}
     ]
 
+# initialize memory
+if "memory" not in st.session_state.keys():
+    st.session_state.memory = ConversationSummaryBufferMemory(
+        llm=OpenAI(),
+        memory_key="chat_history",
+        input_key="human_input",
+        max_token_limit=100,
+        human_prefix="",
+        ai_prefix="",
+    )
+
 # Display or clear chat messages
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
@@ -75,28 +88,69 @@ def clear_chat_history():
     st.session_state.messages = [
         {"role": "assistant", "content": "How may I assist you today?"}
     ]
+    st.session_state.memory = ConversationSummaryBufferMemory(
+        llm=OpenAI(),
+        memory_key="chat_history",
+        input_key="human_input",
+        max_token_limit=100,
+        human_prefix="",
+        ai_prefix="",
+    )
 
 
 st.sidebar.button("Clear Chat History", on_click=clear_chat_history)
 
+# setup retreiver
+metadata_field_info = [
+    AttributeInfo(
+        name="subreddit",
+        description="The subreddit or community where the content was posted.",
+        type="string",
+    ),
+]
+document_content_description = "Text content and metadata from many finance communities, or subreddits, posted to reddit."
+retriever = SelfQueryRetriever.from_llm(
+    OpenAI(temperature=0),
+    vectorstore,
+    document_content_description,
+    metadata_field_info,
+    verbose=True,
+)
+
 
 # Function for generating openai response
-def generate_openai_response(prompt_input):
-    string_dialogue = "You are a helpful assistant. You do not respond as 'User' or pretend to be 'User'. You only respond once as 'Assistant'."
-    for dict_message in st.session_state.messages:
-        if dict_message["role"] == "user":
-            string_dialogue += "User: " + dict_message["content"] + "\n\n"
-        else:
-            string_dialogue += "Assistant: " + dict_message["content"] + "\n\n"
+def generate_openai_response(human_input):
+    template = """You are a chatbot having a conversation with a human. 
+    You are an expert on the finance opinion from the collective reddit community.
+    Use the following pieces of context to answer the question at the end. 
+    If you don't know the answer, just say that you don't know, don't try to make up an answer. 
+    Use three sentences maximum and keep the answer as concise as possible. 
 
-    prompt = PromptTemplate.from_template(
-        string_dialogue + "/n/n {prompt_input} Assistant: "
+    {context}
+
+    {chat_history}
+
+    Question: {human_input}
+
+    Helpful Answer:"""
+    QA_CHAIN_PROMPT = PromptTemplate(
+        input_variables=["context", "human_input", "chat_history"], template=template
     )
-    llm = OpenAI(model_name=selected_model, temperature=temperature, top_p=top_p)
-    llm_chain = LLMChain(prompt=prompt, llm=llm)
-    output = llm_chain.run(prompt_input)
 
-    return output
+    # stuff chain
+    qa_chain = load_qa_chain(
+        llm=OpenAI(model_name=selected_model, temperature=temperature, top_p=top_p),
+        chain_type="stuff",
+        prompt=QA_CHAIN_PROMPT,
+        verbose=True,
+        memory=st.session_state["memory"],
+    )
+
+    # generate response
+    similar_docs = retriever.get_relevant_documents(human_input)
+    result = qa_chain({"input_documents": similar_docs, "human_input": human_input})
+
+    return result["output_text"]
 
 
 # User-provided prompt
