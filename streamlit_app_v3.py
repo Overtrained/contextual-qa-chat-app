@@ -42,7 +42,6 @@ with st.sidebar:
         else:
             st.success("Proceed to entering your prompt message!", icon="👉")
 
-    # Refactored from https://github.com/a16z-infra/llama2-chatbot
     st.subheader("Models and parameters")
     selected_model = st.sidebar.selectbox(
         "Choose OpenAI model", ["gpt-3.5-turbo", "gpt-4"], index=0, key="selected_model"

@@ -32,7 +32,6 @@ debugpy==1.6.7.post1
 decorator==5.1.1
 defusedxml==0.7.1
 dill==0.3.7
-duckduckgo-search==3.9.2
 executing==1.2.0
 faiss-cpu==1.7.4
 fastjsonschema==2.18.0
