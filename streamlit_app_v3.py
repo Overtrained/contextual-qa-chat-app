@@ -1,8 +1,28 @@
 import streamlit as st
 import os
+from langchain.vectorstores import Pinecone
+from langchain.embeddings import OpenAIEmbeddings
 from langchain.llms import OpenAI
+from langchain.retrievers.self_query.base import SelfQueryRetriever
+from langchain.chains.query_constructor.base import AttributeInfo
+import pinecone
+
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
+
+
+@st.cache_resource
+def init_vectorstore(openai_key):
+    os.environ["OPENAI_API_KEY"] = openai_key
+    os.environ["PINECONE_API_KEY"] = st.secrets["PINECONE_API_KEY"]
+    # connect to pinecone vectorstore
+    pinecone.init(environment=st.secrets["PINECONE_ENV"])
+    embeddings = OpenAIEmbeddings()
+    vectorstore = Pinecone.from_existing_index(
+        index_name="reddit-finance", embedding=embeddings
+    )
+    return vectorstore
+
 
 # App title
 st.set_page_config(page_title="Reddit Finance Chatbot 🤑💬")
@@ -36,7 +56,8 @@ with st.sidebar:
         ":computer: GitHub repo [here](https://github.com/Overtrained/contextual-qa-chat-app)"
     )
 
-os.environ["OPENAI_API_KEY"] = openai_key
+# connect to vectorstore
+vectorstore = init_vectorstore(openai_key)
 
 # Store LLM generated responses
 if "messages" not in st.session_state.keys():
