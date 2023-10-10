@@ -29,18 +29,24 @@ def init_vectorstore(openai_key):
 # App title
 st.set_page_config(page_title="Reddit Finance Chatbot 🤑💬")
 
+# initialize OpenAI Credential Check
+if "openai_key_check" not in st.session_state.keys():
+    st.session_state["openai_key_check"] = False
+
 # OpenAI Credentials
 with st.sidebar:
     st.title("Reddit Finance Chatbot 🤑💬")
     if "OPENAI_API_KEY" in st.secrets:
         st.success("API key already provided!", icon="✅")
         openai_key = st.secrets["OPENAI_API_KEY"]
+        st.session_state["openai_key_check"] = True
     else:
         openai_key = st.text_input("Enter OpenAI API key:", type="password")
         if not (openai_key.startswith("sk-") and len(openai_key) == 51):
             st.warning("Please enter your credentials!", icon="⚠️")
         else:
             st.success("Proceed to entering your prompt message!", icon="👉")
+            st.session_state["openai_key_check"] = True
 
     st.subheader("Models and parameters")
     selected_model = st.sidebar.selectbox(
@@ -57,25 +63,25 @@ with st.sidebar:
         ":computer: GitHub repo [here](https://github.com/Overtrained/contextual-qa-chat-app)"
     )
 
-# connect to vectorstore
-vectorstore = init_vectorstore(openai_key)
+if st.session_state["openai_key_check"]:
+    # connect to vectorstore
+    vectorstore = init_vectorstore(openai_key)
+    # initialize memory
+    if "memory" not in st.session_state.keys():
+        st.session_state.memory = ConversationSummaryBufferMemory(
+            llm=OpenAI(),
+            memory_key="chat_history",
+            input_key="human_input",
+            max_token_limit=100,
+            human_prefix="",
+            ai_prefix="",
+        )
 
 # Store LLM generated responses
 if "messages" not in st.session_state.keys():
     st.session_state.messages = [
         {"role": "assistant", "content": "How may I assist you today?"}
     ]
-
-# initialize memory
-if "memory" not in st.session_state.keys():
-    st.session_state.memory = ConversationSummaryBufferMemory(
-        llm=OpenAI(),
-        memory_key="chat_history",
-        input_key="human_input",
-        max_token_limit=100,
-        human_prefix="",
-        ai_prefix="",
-    )
 
 # Display or clear chat messages
 for message in st.session_state.messages:
