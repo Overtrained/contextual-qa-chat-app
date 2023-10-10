@@ -13,7 +13,7 @@ from langchain.memory import ConversationSummaryBufferMemory
 
 
 @st.cache_resource
-def init_vectorstore(openai_key):
+def init_retriever(openai_key):
     os.environ["OPENAI_API_KEY"] = openai_key
     os.environ["PINECONE_API_KEY"] = st.secrets["PINECONE_API_KEY"]
 
@@ -23,7 +23,24 @@ def init_vectorstore(openai_key):
     vectorstore = Pinecone.from_existing_index(
         index_name="reddit-finance", embedding=embeddings
     )
-    return vectorstore
+
+    # setup retreiver
+    metadata_field_info = [
+        AttributeInfo(
+            name="subreddit",
+            description="The subreddit or community where the content was posted.",
+            type="string",
+        ),
+    ]
+    document_content_description = "Text content and metadata from many finance communities, or subreddits, posted to reddit."
+    retriever = SelfQueryRetriever.from_llm(
+        OpenAI(temperature=0),
+        vectorstore,
+        document_content_description,
+        metadata_field_info,
+        verbose=True,
+    )
+    return retriever
 
 
 # App title
@@ -64,8 +81,8 @@ with st.sidebar:
     )
 
 if st.session_state["openai_key_check"]:
-    # connect to vectorstore
-    vectorstore = init_vectorstore(openai_key)
+    # initialize retriever
+    retriever = init_retriever(openai_key)
     # initialize memory
     if "memory" not in st.session_state.keys():
         st.session_state.memory = ConversationSummaryBufferMemory(
@@ -104,23 +121,6 @@ def clear_chat_history():
 
 
 st.sidebar.button("Clear Chat History", on_click=clear_chat_history)
-
-# setup retreiver
-metadata_field_info = [
-    AttributeInfo(
-        name="subreddit",
-        description="The subreddit or community where the content was posted.",
-        type="string",
-    ),
-]
-document_content_description = "Text content and metadata from many finance communities, or subreddits, posted to reddit."
-retriever = SelfQueryRetriever.from_llm(
-    OpenAI(temperature=0),
-    vectorstore,
-    document_content_description,
-    metadata_field_info,
-    verbose=True,
-)
 
 
 # Function for generating openai response
