@@ -111,7 +111,7 @@ def generate_openai_response(human_input):
     You are an expert on the finance opinion from the collective reddit community.
     Use the following pieces of context to answer the question at the end. 
     If you don't know the answer, just say that you don't know, don't try to make up an answer. 
-    Use three sentences maximum and keep the answer as concise as possible. 
+    Use five sentences maximum and explain your reasoning. 
 
     {context}
 
