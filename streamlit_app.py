@@ -9,6 +9,7 @@ from langchain.memory import ConversationSummaryBufferMemory
 import pinecone
 
 
+# vectorstore connection
 @st.cache_resource
 def init_vectorstore():
     os.environ["OPENAI_API_KEY"] = openai_key
@@ -21,6 +22,19 @@ def init_vectorstore():
         index_name="reddit-finance", embedding=embeddings
     )
     return vectorstore
+
+
+# for extracting source dictionary from retriever results
+def extract_sources(docs):
+    sources = []
+    for doc in docs:
+        source = {
+            "subreddit": doc.metadata["subreddit"],
+            "title": doc.metadata["title"],
+            "content": doc.page_content,
+        }
+        sources.append(source)
+    return sources
 
 
 # App title
@@ -86,6 +100,17 @@ if "messages" not in st.session_state.keys():
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
+        if "sources" in message.keys():
+            st.markdown(
+                f"""
+                        ## Sources
+                        **Subreddit**: {message["sources"][0]["subreddit"]}\n
+                        **Title**: {message["sources"][0]["title"]}\n
+                        **Content**: 
+                        ___
+                        """
+            )
+            st.write(message["sources"][1]["content"])
 
 
 def clear_chat_history():
@@ -155,8 +180,21 @@ if st.session_state.messages[-1]["role"] != "assistant":
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
             result = generate_openai_response(prompt)
+            sources = extract_sources(result["input_documents"])
             st.write(result["output_text"])
-    message = {"role": "assistant", "content": result["output_text"]}
+            st.markdown(
+                f"""
+                        ## Sources
+                        **Subreddit**: {sources[0]["subreddit"]}
+                        **Title**: {sources[0]["title"]}
+                       
+                        """
+            )
+    message = {
+        "role": "assistant",
+        "content": result["output_text"],
+        "sources": sources,
+    }
     st.session_state.messages.append(message)
 
 try:
