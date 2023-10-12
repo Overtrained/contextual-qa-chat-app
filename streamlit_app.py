@@ -37,6 +37,18 @@ def extract_sources(docs):
     return sources
 
 
+# for generating formatted html to display sources
+def get_sources_html(sources):
+    n_sources = len(sources)
+    html_out = ""
+    for i, source in enumerate(sources):
+        html_out += f"<p><blockquote>{source['content']}</blockquote></p>"
+        html_out += f"Subreddit: {source['subreddit']}, Title: {source['title']}"
+        if i < n_sources - 1:
+            html_out += "<p><hr/></p>"
+    return html_out
+
+
 # App title
 st.set_page_config(page_title="Reddit Finance Chatbot 🤑💬")
 
@@ -101,16 +113,9 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
         if "sources" in message.keys():
-            st.markdown(
-                f"""
-                        ## Sources
-                        **Subreddit**: {message["sources"][0]["subreddit"]}\n
-                        **Title**: {message["sources"][0]["title"]}\n
-                        **Content**: 
-                        ___
-                        """
-            )
-            st.write(message["sources"][1]["content"])
+            with st.expander("Sources"):
+                sources_html = get_sources_html(message["sources"])
+                st.write(sources_html, unsafe_allow_html=True)
 
 
 def clear_chat_history():
@@ -180,24 +185,15 @@ if st.session_state.messages[-1]["role"] != "assistant":
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
             result = generate_openai_response(prompt)
-            sources = extract_sources(result["input_documents"])
             st.write(result["output_text"])
-            st.markdown(
-                f"""
-                        ## Sources
-                        **Subreddit**: {sources[0]["subreddit"]}
-                        **Title**: {sources[0]["title"]}
-                       
-                        """
-            )
+            sources = extract_sources(result["input_documents"])
+            with st.expander("Sources"):
+                sources_html = get_sources_html(sources)
+                st.write(sources_html, unsafe_allow_html=True)
+
     message = {
         "role": "assistant",
         "content": result["output_text"],
         "sources": sources,
     }
     st.session_state.messages.append(message)
-
-try:
-    result
-except NameError:
-    print("no result yet")
