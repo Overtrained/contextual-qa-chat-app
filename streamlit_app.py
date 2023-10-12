@@ -115,8 +115,6 @@ with st.sidebar:
     )
 
 if st.session_state["openai_key_check"]:
-    # # initialize retriever
-    # retriever = init_retriever()
     # initialize vectorstore
     vectorstore = init_vectorstore()
     # initialize memory
