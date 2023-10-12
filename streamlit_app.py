@@ -50,6 +50,21 @@ def get_sources_html(sources):
     return html_out
 
 
+# reset chat history in session state and memory object
+def clear_chat_history():
+    st.session_state.messages = [
+        {"role": "assistant", "content": "How may I assist you today?"}
+    ]
+    st.session_state.memory = ConversationSummaryBufferMemory(
+        llm=OpenAI(),
+        memory_key="chat_history",
+        input_key="human_input",
+        max_token_limit=100,
+        human_prefix="",
+        ai_prefix="",
+    )
+
+
 # App title
 st.set_page_config(page_title="Reddit Finance Chatbot 🤑💬")
 
@@ -72,16 +87,18 @@ with st.sidebar:
             st.success("Proceed to entering your prompt message!", icon="👉")
             st.session_state["openai_key_check"] = True
 
-    st.subheader("Models and parameters")
-    selected_model = st.sidebar.selectbox(
-        "Choose OpenAI model", ["gpt-3.5-turbo", "gpt-4"], index=0, key="selected_model"
-    )
-    temperature = st.sidebar.slider(
-        "temperature", min_value=0.01, max_value=5.0, value=0.7, step=0.01
-    )
-    top_p = st.sidebar.slider(
-        "top_p", min_value=0.01, max_value=1.0, value=0.9, step=0.01
-    )
+    # model and model parameter selections
+    with st.expander("Models and Parameters"):
+        selected_model = st.selectbox(
+            "Choose OpenAI model",
+            ["gpt-3.5-turbo", "gpt-4"],
+            index=0,
+            key="selected_model",
+        )
+        temperature = st.slider(
+            "temperature", min_value=0.01, max_value=5.0, value=0.7, step=0.01
+        )
+        top_p = st.slider("top_p", min_value=0.01, max_value=1.0, value=0.9, step=0.01)
 
     # metadata filters
     with st.expander("Metadata Filter"):
@@ -89,6 +106,10 @@ with st.sidebar:
             "subreddit(s) included", options=all_subreddits, default=all_subreddits
         )
 
+    # reset history in session state and memory object
+    st.button("Clear Chat History", on_click=clear_chat_history)
+
+    # repo link
     st.markdown(
         ":computer: GitHub repo [here](https://github.com/Overtrained/contextual-qa-chat-app)"
     )
@@ -115,7 +136,7 @@ if "messages" not in st.session_state.keys():
         {"role": "assistant", "content": "How may I assist you today?"}
     ]
 
-# Display or clear chat messages
+# Display chat messages
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
@@ -123,23 +144,6 @@ for message in st.session_state.messages:
             with st.expander("Sources"):
                 sources_html = get_sources_html(message["sources"])
                 st.write(sources_html, unsafe_allow_html=True)
-
-
-def clear_chat_history():
-    st.session_state.messages = [
-        {"role": "assistant", "content": "How may I assist you today?"}
-    ]
-    st.session_state.memory = ConversationSummaryBufferMemory(
-        llm=OpenAI(),
-        memory_key="chat_history",
-        input_key="human_input",
-        max_token_limit=100,
-        human_prefix="",
-        ai_prefix="",
-    )
-
-
-st.sidebar.button("Clear Chat History", on_click=clear_chat_history)
 
 
 # Function for generating openai response
