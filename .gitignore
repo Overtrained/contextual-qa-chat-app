@@ -1,4 +1,10 @@
+# environment
 .venv
+# secrets
 secrets.toml
+# configuration files
 .vscode
+# locally saved data
 data/
+# cached files
+__pycache__/
