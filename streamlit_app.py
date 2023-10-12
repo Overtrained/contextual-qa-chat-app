@@ -173,7 +173,11 @@ def generate_openai_response(human_input):
 
     # generate response
     similar_docs = vectorstore.max_marginal_relevance_search(
-        human_input, k=4, fetch_k=30, lambda_mult=0.5
+        human_input,
+        k=4,
+        fetch_k=30,
+        lambda_mult=0.5,
+        filter={"subreddit": {"$in": subreddits_selected}},
     )
     result = qa_chain({"input_documents": similar_docs, "human_input": human_input})
 
