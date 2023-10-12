@@ -7,6 +7,7 @@ from langchain.prompts import PromptTemplate
 from langchain.chains.question_answering import load_qa_chain
 from langchain.memory import ConversationSummaryBufferMemory
 import pinecone
+from utils import *
 
 
 # vectorstore connection
@@ -81,6 +82,12 @@ with st.sidebar:
     top_p = st.sidebar.slider(
         "top_p", min_value=0.01, max_value=1.0, value=0.9, step=0.01
     )
+
+    # metadata filters
+    with st.expander("Metadata Filter"):
+        subreddits_selected = st.multiselect(
+            "subreddit(s) included", options=all_subreddits, default=all_subreddits
+        )
 
     st.markdown(
         ":computer: GitHub repo [here](https://github.com/Overtrained/contextual-qa-chat-app)"
